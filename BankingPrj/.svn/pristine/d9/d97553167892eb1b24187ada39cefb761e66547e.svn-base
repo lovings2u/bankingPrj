@@ -1,0 +1,54 @@
+package com.bank.service;
+
+import java.io.File;
+import java.util.List;
+
+import com.bank.vo.AccountVo;
+import com.bank.vo.CustomerVo;
+import com.bank.vo.TransactionVo;
+
+public class BankingService {
+	IBankingService bs;
+	ITransactionService ts;
+	ICheckAccountService cas;
+	public BankingService() {
+		bs = new BankingServiceImpl();
+	}
+	public void createDate(File file) {
+		bs.createDate(file);
+	}
+
+	public int withdraw(TransactionVo tvo) throws Exception{
+		return bs.withdraw(tvo);
+	}
+	public int deposit(TransactionVo tvo) throws Exception {
+		return bs.deposit(tvo);
+	}
+	public double getBalance(TransactionVo tvo) throws Exception {
+		return bs.getBalance(tvo);
+	}
+	public double transfer(TransactionVo tvo, AccountVo avo) throws Exception{
+		return bs.transfer(tvo, avo);
+	}
+	public List<AccountVo> accumulateInterest() {
+		cas = new CheckAccounts();
+		return cas.accumulateInterest();
+	}
+	public List<AccountVo> checkAccounts() {
+		cas = new CheckAccounts();
+		return cas.checkAccounts();
+	}
+	public List<CustomerVo> customerReport() {
+		cas = new CheckAccounts();
+		return cas.customerReport(); 
+	}
+	public double setTransaction(TransactionVo tvo) throws Exception {
+		ts = new TransactionServiceImpl();
+		return ts.setTransaction(tvo);
+	}
+	public List<TransactionVo> getTransaction() {
+		ts = new TransactionServiceImpl();
+		return ts.getTransaction();
+	}
+}
+

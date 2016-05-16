@@ -1,0 +1,407 @@
+package com.bank.entity;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.bank.exception.NoAccountException;
+import com.bank.vo.AccountVo;
+import com.bank.vo.BankVo;
+import com.bank.vo.CustomerVo;
+import com.bank.vo.TransactionVo;
+
+public class BankingEntityImpl implements IBankingEntity {
+	CustomerVo cvo;
+	AccountVo avo;
+	Connection conn;
+	List<TransactionVo> transactionList;
+	List<AccountVo> accountList;
+	List<CustomerVo> customerList;
+	
+	@Override
+	public void createDate(BankVo bvo) {
+		String sql = "INSERT INTO bank(bank_id, bank_name) VALUES(?,?);";
+		String bankId = bvo.getBankId();
+		String bankName = bvo.getBankName();
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, bankId);
+			pstmt.setString(2, bankName);
+			pstmt.executeUpdate();
+			int customers = bvo.getNumOfCustomers();
+			for (int i = 0; i < customers; i++) {
+				cvo = bvo.getCustomer(i);
+				String customerId = cvo.getCustomerId();
+				sql = "INSERT INTO customer(customer_id, bank_id, first_name, last_name) VALUES(?,?,?,?);";
+				pstmt = conn.prepareStatement(sql);
+				pstmt.setString(1, customerId);
+				pstmt.setString(2, bankId);
+				pstmt.setString(3, cvo.getFirstName());
+				pstmt.setString(4, cvo.getLastName());
+				pstmt.executeUpdate();
+				int accounts = cvo.getNumberOfAccounts();
+				for (int j = 0; j < accounts; j++) {
+					avo = cvo.getAccount(j);
+					String accountId = avo.getAccountId();
+					String accountType = avo.getAccountType();
+					if (accountType.equals("S")) {
+						AccountVo savingsAccount =  avo;
+						sql = "INSERT INTO account(account_id, account_type, balance, interest_rate, customer_id) VALUES(?,?,?,?,?)";
+						pstmt = conn.prepareStatement(sql);
+						pstmt.setString(1, accountId);
+						pstmt.setString(2, accountType);
+						pstmt.setDouble(3, savingsAccount.getBalance());
+						pstmt.setDouble(4, savingsAccount.getInterestRate());
+						pstmt.setString(5, customerId);
+						pstmt.executeUpdate();
+					} else if (accountType.equals("C")) {
+						AccountVo checkingAccount = avo;
+						sql = "INSERT INTO account(account_id, account_type, balance, interest_rate, customer_id, overdraft_amount, overdraft_protect) VALUES(?,?,?,?,?,?,?)";
+						pstmt = conn.prepareStatement(sql);
+						pstmt.setString(1, accountId);
+						pstmt.setString(2, accountType);
+						pstmt.setDouble(3, checkingAccount.getBalance());
+						pstmt.setDouble(4, checkingAccount.getInterestRate());
+						pstmt.setString(5, customerId);
+						pstmt.setDouble(6, checkingAccount.getOverdraftAmount());
+						pstmt.setDouble(7, checkingAccount.getOverdraftProtect());
+						pstmt.executeUpdate();
+					}
+				}
+			}
+
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+	public int withdraw(AccountVo cvo) {
+		String sql = "UPDATE account SET balance = ?, overdraft_amount = ? WHERE  account_id = ?";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setDouble(1, cvo.getBalance());
+			pstmt.setDouble(2, cvo.getOverdraftAmount());
+			pstmt.setString(3, cvo.getAccountId());
+			int result = pstmt.executeUpdate();
+			if(result > 0) {
+				return result;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return 0;
+	}
+	
+	public int deposit(AccountVo avo) {
+		String sql = "UPDATE account SET balance = balance + ? WHERE account_id = ? AND account_type = ? AND customer_id = ?;";
+		PreparedStatement pstmt = null;
+		int result = 0;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setDouble(1, avo.getBalance());
+			pstmt.setString(2, avo.getAccountId());
+			pstmt.setString(3, avo.getAccountType());
+			pstmt.setString(4, avo.getCustomerId());
+			result = pstmt.executeUpdate();
+			if(!(result > 0)) {
+				throw new NoAccountException("No Such Account!!");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+	}
+	public double getBalance(TransactionVo tvo) {
+		String sql = "SELECT balance FROM account WHERE account_id = ? AND account_type = ? AND customer_id = ?;";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, tvo.getAccountId());
+			pstmt.setString(2, tvo.getAccountType());
+			pstmt.setString(3, tvo.getCustomerId());
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()){
+				double balance = rs.getDouble("balance");
+				return balance;
+			} 
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return 0.0;
+	}
+	public double transfer(TransactionVo tvo, AccountVo avo){
+		String sql = "UPDATE account SET balance = balance - ? WHERE  account_id = ?";
+		PreparedStatement pstmt = null;
+		int result = 0;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setDouble(1, tvo.getAmount());
+			pstmt.setString(2, tvo.getAccountId());
+			pstmt.executeUpdate();
+			
+			sql = "UPDATE account SET balance = balance + ? WHERE  account_id = ?";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setDouble(1, tvo.getAmount());
+			pstmt.setString(2, avo.getAccountId());
+			result = pstmt.executeUpdate();
+			if(result == 0) {
+				throw new NoAccountException("No Account!");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+		
+	}
+	@Override
+	public double setTransaction(TransactionVo tvo) {
+		String sql = "INSERT INTO transaction(bank_id, customer_id, account_id, transaction_type, transaction_date, transaction_amount) "
+				+ "VALUES(?,?,?,?,now(),?);";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, "B2");
+			pstmt.setString(2, tvo.getCustomerId());
+			pstmt.setString(3, tvo.getAccountId());
+			pstmt.setString(4, tvo.getTransactionType());
+			pstmt.setDouble(5, tvo.getAmount());
+			int result = pstmt.executeUpdate();
+			if(result > 0) {
+				return result;
+			}				
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return 0.0;
+	}
+	@Override
+	public List<TransactionVo> getTransactionVo() {
+		transactionList = new ArrayList<>();
+		String sql = "SELECT * FROM transaction" ;
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()){
+				TransactionVo tvo = new TransactionVo(rs.getString("customer_id"), rs.getString("account_id"), 
+						" ",rs.getString("transaction_type"), rs.getDouble("transaction_amount"));
+				tvo.setTransactionDate(rs.getDate("transaction_date"));
+				tvo.setTransactionTime(rs.getTime("transaction_date"));
+				transactionList.add(tvo);
+			}
+		} catch(Exception e) {
+			System.err.println(e.getMessage());
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return transactionList;
+	}
+	
+	public AccountVo getAccount(String accountId) {
+		AccountVo cvo = null;
+		String sql = "SELECT * FROM account WHERE account_id = ?;";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, accountId);
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()){
+				double balance = rs.getDouble("balance");
+				double overdraftProtect = rs.getDouble("overdraft_protect");
+				cvo = new AccountVo(rs.getString("customer_id"), rs.getString("account_id"), rs.getString("account_type"), rs.getDouble("balance"),rs.getDouble("overdraft_amount"), rs.getDouble("overdraft_protect"));
+				cvo.setOverdraftAmount(rs.getDouble("overdraft_amount"));	
+			} 
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		return cvo;
+	}
+	
+	public List<AccountVo> accumulateInterest() {
+		accountList = new ArrayList<>();
+		String sql = "SELECT * FROM account WHERE account_type = 'S';";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()){
+				AccountVo avo = new AccountVo(rs.getString("customer_id"), rs.getString("account_id"), rs.getString("account_type"), rs.getDouble("balance"),rs.getDouble("interest_rate"));
+				avo.setAccountId(rs.getString("account_id"));
+				avo.setAccountType(rs.getString("account_type"));
+				avo.setCustomerId(rs.getString("customer_id"));
+				accountList.add(avo);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return accountList;
+	}
+	public List<AccountVo> checkAccounts() {
+		accountList = new ArrayList<>();
+		String sql = "SELECT * FROM account;";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()){
+				if(rs.getString("account_type").equals("S")){
+					AccountVo avo = new AccountVo(rs.getString("customer_id"), rs.getString("account_id"), rs.getString("account_type"), rs.getDouble("balance"),rs.getDouble("interest_rate"));
+					accountList.add(avo);
+				} else {
+					AccountVo avo = new AccountVo(rs.getString("customer_id"), rs.getString("account_id"), rs.getString("account_type"), rs.getDouble("balance"),rs.getDouble("overdraft_amount"), rs.getDouble("overdraft_protect"));
+					accountList.add(avo);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return accountList;
+	}
+	@Override
+	public List<CustomerVo> customerReport() {
+		customerList = new ArrayList<>();
+		String sql = "SELECT * FROM customer;";
+		PreparedStatement pstmt = null;
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			String url = "jdbc:mysql://localhost:3306/yoribogo";
+			conn = (Connection) DriverManager.getConnection(url, "yori_user", "1234");
+			pstmt = conn.prepareStatement(sql);
+			ResultSet rs = pstmt.executeQuery();
+			while(rs.next()){
+				CustomerVo cvo = new CustomerVo(rs.getString("first_name"),rs.getString("last_name"), rs.getString("customer_id"), rs.getString("bank_id"));
+				sql = "SELECT * FROM account WHERE customer_id = ?";
+				pstmt = conn.prepareStatement(sql);
+				String customerId = rs.getString("customer_id");
+				pstmt.setString(1, customerId);
+				ResultSet rs2 = pstmt.executeQuery();
+				while(rs2.next()){
+					if(rs2.getString("account_type").equals("S")){
+						AccountVo sa = new AccountVo(customerId, rs2.getString("account_id"), rs2.getString("account_type"), rs2.getDouble("balance"),rs2.getDouble("interest_rate"));
+						cvo.addAccount(sa);
+					} else {
+						AccountVo ca = new AccountVo(customerId, rs2.getString("account_id"), rs2.getString("account_type"), rs2.getDouble("balance"),rs2.getDouble("overdraft_amount"), rs2.getDouble("overdraft_protect"));
+						cvo.addAccount(ca);
+					}
+				}
+				customerList.add(cvo);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				conn.close();
+				pstmt.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return customerList;
+	}
+	 
+
+}

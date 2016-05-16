@@ -1,0 +1,12 @@
+package com.bank.service;
+
+import java.util.List;
+
+import com.bank.vo.AccountVo;
+import com.bank.vo.CustomerVo;
+
+public interface ICheckAccountService {
+	List<AccountVo> checkAccounts();
+	List<AccountVo> accumulateInterest();
+	List<CustomerVo> customerReport();
+}

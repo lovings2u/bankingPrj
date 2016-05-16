@@ -1,0 +1,27 @@
+package com.bank.service;
+
+import java.util.List;
+
+import com.bank.entity.BankingEntity;
+import com.bank.vo.AccountVo;
+import com.bank.vo.CustomerVo;
+
+public class CheckAccountImpl implements ICheckAccountService {
+	BankingEntity be;
+	public CheckAccountImpl() {
+		be = new BankingEntity();
+	}
+	@Override
+	public List<AccountVo> accumulateInterest() {
+		return be.accumulateInterest();
+	}
+	@Override
+	public List<AccountVo> checkAccounts() {
+		return be.checkAccounts();
+	}
+	@Override
+	public List<CustomerVo> customerReport() {
+		return be.customerReport();
+	}
+
+}

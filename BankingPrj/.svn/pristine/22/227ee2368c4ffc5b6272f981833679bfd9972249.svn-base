@@ -1,0 +1,22 @@
+package com.bank.service;
+
+import java.util.List;
+
+import com.bank.entity.BankingEntity;
+import com.bank.vo.TransactionVo;
+
+public class TransactionServiceImpl implements ITransactionService{
+	BankingEntity be;
+	public TransactionServiceImpl() {
+		be = new BankingEntity();
+	}
+	@Override
+	public double setTransaction(TransactionVo tvo) throws Exception {
+		return be.setTransaction(tvo);
+	}
+	@Override
+	public List<TransactionVo> getTransaction() {
+		return be.getTransaction();
+	}
+	
+}

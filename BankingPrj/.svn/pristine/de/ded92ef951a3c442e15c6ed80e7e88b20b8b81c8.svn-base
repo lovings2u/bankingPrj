@@ -1,0 +1,14 @@
+package com.bank.service;
+
+import java.io.File;
+
+import com.bank.vo.AccountVo;
+import com.bank.vo.TransactionVo;
+
+public interface IBankingService {
+	void createDate(File file);
+	int deposit(TransactionVo tvo);
+	int transfer(TransactionVo tvo, AccountVo avo) throws Exception;
+	int withdraw(TransactionVo tvo) throws Exception;
+	double getBalance(TransactionVo tvo);
+}
